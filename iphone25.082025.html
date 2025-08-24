@@ -1,0 +1,205 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JC Decaux Quality Inspection</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h2 { margin-top: 20px; }
+    .section { border: 1px solid #ccc; padding: 10px; margin-bottom: 20px; border-radius: 8px; }
+    .photo-slot { width: 100px; height: 100px; border: 1px dashed #aaa; display: inline-flex; align-items: center; justify-content: center; margin: 5px; cursor: pointer; position: relative; }
+    .photo-slot img { max-width: 100%; max-height: 100%; }
+    .notification { display: none; padding: 10px; margin: 10px 0; border-radius: 5px; }
+    .success { background-color: #d4edda; color: #155724; }
+    .error { background-color: #f8d7da; color: #721c24; }
+    #save-options { display: none; margin-top: 15px; }
+  </style>
+</head>
+<body>
+  <h1>JC Decaux Quality Inspection</h1>
+
+  <label>Date: <input type="date" id="date"></label><br><br>
+  <label>Technician: <input type="text" id="technician"></label><br><br>
+
+  <!-- Four inspections -->
+  <div id="inspections">
+    <div class="section">
+      <h2>Inspection 1</h2>
+      <label>Furniture Index: <input type="text" id="index-1"></label><br><br>
+      <label>Comments:<br><textarea id="comments-1"></textarea></label>
+      <h3>Photos</h3>
+      <div id="photos-grid-1" class="photos-grid">
+        <div class="photo-slot" onclick="uploadPhoto(this,1)">+</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Inspection 2</h2>
+      <label>Furniture Index: <input type="text" id="index-2"></label><br><br>
+      <label>Comments:<br><textarea id="comments-2"></textarea></label>
+      <h3>Photos</h3>
+      <div id="photos-grid-2" class="photos-grid">
+        <div class="photo-slot" onclick="uploadPhoto(this,2)">+</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Inspection 3</h2>
+      <label>Furniture Index: <input type="text" id="index-3"></label><br><br>
+      <label>Comments:<br><textarea id="comments-3"></textarea></label>
+      <h3>Photos</h3>
+      <div id="photos-grid-3" class="photos-grid">
+        <div class="photo-slot" onclick="uploadPhoto(this,3)">+</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Inspection 4</h2>
+      <label>Furniture Index: <input type="text" id="index-4"></label><br><br>
+      <label>Comments:<br><textarea id="comments-4"></textarea></label>
+      <h3>Photos</h3>
+      <div id="photos-grid-4" class="photos-grid">
+        <div class="photo-slot" onclick="uploadPhoto(this,4)">+</div>
+      </div>
+    </div>
+  </div>
+
+  <button onclick="saveReport()">Save Report</button>
+  <div id="save-options">
+    <p>📂 Report ready:</p>
+    <a id="direct-download" href="#" download>Download PDF</a>
+  </div>
+
+  <div id="notification" class="notification"></div>
+
+  <script>
+    function showNotification(msg, type) {
+      const note = document.getElementById("notification");
+      note.innerText = msg;
+      note.className = "notification " + type;
+      note.style.display = "block";
+      setTimeout(() => note.style.display = "none", 3000);
+    }
+
+    function uploadPhoto(slot, insp) {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.onchange = e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const img = document.createElement("img");
+          img.src = ev.target.result;
+          slot.innerHTML = "";
+          slot.appendChild(img);
+          slot.dataset.fileData = ev.target.result;
+
+          const grid = document.getElementById(`photos-grid-${insp}`);
+          if (!grid.querySelector(".photo-slot:not([data-file-data])")) {
+            const newSlot = document.createElement("div");
+            newSlot.className = "photo-slot";
+            newSlot.innerText = "+";
+            newSlot.onclick = () => uploadPhoto(newSlot, insp);
+            grid.appendChild(newSlot);
+          }
+        };
+        reader.readAsDataURL(file);
+      };
+      input.click();
+    }
+
+    // ✅ Clean, organised PDF generator
+    async function saveReport() {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p','mm','a4');
+      let y = 20;
+
+      pdf.setFontSize(20);
+      pdf.setFont("helvetica","bold");
+      pdf.text("JC Decaux Quality Inspection Report", 105, y, { align: "center" });
+      y += 12;
+      pdf.setDrawColor(0);
+      pdf.setLineWidth(0.5);
+      pdf.line(10, y, 200, y);
+      y += 10;
+
+      pdf.setFontSize(12);
+      pdf.setFont("helvetica","normal");
+      const date = document.getElementById('date').value || new Date().toISOString().split('T')[0];
+      const technician = document.getElementById('technician').value || 'Not specified';
+      pdf.text(`📅 Date: ${date}`, 10, y); y += 7;
+      pdf.text(`👷 Technician: ${technician}`, 10, y); y += 12;
+
+      for (let i=1;i<=4;i++) {
+        const idx=document.getElementById(`index-${i}`).value||"Not specified";
+        const com=document.getElementById(`comments-${i}`).value||"No comments";
+
+        pdf.setFontSize(14);
+        pdf.setFont("helvetica","bold");
+        pdf.setTextColor(30,60,120);
+        pdf.text(`Inspection ${i}`, 10, y); 
+        y += 8;
+
+        pdf.setDrawColor(200,200,200);
+        pdf.setLineWidth(0.2);
+        pdf.line(10, y, 200, y);
+        y += 8;
+
+        pdf.setFontSize(11);
+        pdf.setFont("helvetica","normal");
+        pdf.setTextColor(0,0,0);
+        pdf.text(`Furniture Index: ${idx}`, 10, y); y += 6;
+
+        const commentLines = pdf.splitTextToSize(`Comments: ${com}`, 180);
+        pdf.text(commentLines, 10, y);
+        y += commentLines.length * 6 + 5;
+
+        const slots = document.querySelectorAll(`#photos-grid-${i} .photo-slot`);
+        let photoNum = 1;
+        for (const s of slots){
+          if (s.dataset.fileData){
+            const img = s.dataset.fileData;
+            const props = pdf.getImageProperties(img);
+
+            const maxW = 160, maxH = 90;
+            let w = maxW;
+            let h = (props.height * w) / props.width;
+            if (h > maxH) { h = maxH; w = (props.width * h) / props.height; }
+
+            if (y + h + 15 > 280) { pdf.addPage(); y = 20; }
+
+            pdf.setFontSize(10);
+            pdf.setFont("helvetica","italic");
+            pdf.text(`Photo ${photoNum}`, 10, y);
+            y += 5;
+
+            pdf.addImage(img, 'JPEG', 10, y, w, h);
+            y += h + 10;
+            photoNum++;
+          }
+        }
+
+        y += 5;
+        if (y > 250 && i < 4) { pdf.addPage(); y = 20; }
+      }
+
+      const fileName = `JC_Decaux_Inspection_${date.replace(/-/g,'_')}.pdf`;
+      window.currentPDF = pdf;
+      window.currentFileName = fileName;
+
+      const pdfBlob = pdf.output('blob');
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const directDownloadLink = document.getElementById('direct-download');
+      directDownloadLink.href = blobUrl;
+      directDownloadLink.download = fileName;
+
+      document.getElementById('save-options').style.display = 'block';
+      showNotification("✅ PDF ready - tap link to save", "success");
+    }
+  </script>
+</body>
+</html>
